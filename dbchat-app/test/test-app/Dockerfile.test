@@ -1,0 +1,28 @@
+# Base Arguements to leverage across build stages
+ARG APP_DIR=/app
+
+# Use Node.js LTS version as base image
+FROM node:14 AS build
+ARG APP_DIR
+
+# Set working directory
+WORKDIR ${APP_DIR}
+
+# Copy package.json and package-lock.json
+COPY package*.json ${APP_DIR}
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the source code
+COPY public/ ${APP_DIR}/public
+COPY src/ ${APP_DIR}/src
+
+# Build the React app
+RUN npm run build
+
+# Expose port 3000 to the outside world
+EXPOSE 3000
+
+# Command to run the React app
+CMD ["npm", "start"]

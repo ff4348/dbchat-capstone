@@ -1,6 +1,6 @@
 import random
 from fastapi.testclient import TestClient
-from dbhcat.main import app
+from dbchat.main import app
 
 client = TestClient(app)
 

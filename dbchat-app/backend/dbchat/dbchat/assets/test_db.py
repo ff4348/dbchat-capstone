@@ -19,7 +19,7 @@ from assets import execute_query
 ## docker exec <container_id> /bin/sh -c 'mysql -u root -pyour_password </sakila-schema.sql'
 
 # Exec into docker container
-## docker exec -it user_mysql_1 mysql -uroot -proot_password
+## docker exec -it mysql-container mysql -uroot -pyour_password
 
 # Create R-O user
 ## CREATE USER 'newuser' IDENTIFIED BY 'newpassword';

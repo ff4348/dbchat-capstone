@@ -1,0 +1,21 @@
+# possibly use this instead: mysql/mysql-server:latest
+FROM mysql:latest as builder
+
+# possibly remove this
+RUN ["sed", "-i", "s/exec \"$@\"/echo \"not running $@\"/", "/usr/local/bin/docker-entrypoint.sh"]
+
+ENV MYSQL_ROOT_PASSWORD=root
+
+COPY ./dbchat/assets/1-init.sql /docker-entrypoint-initdb.d/
+COPY ./dbchat/assets/2-sakila-schema.sql /docker-entrypoint-initdb.d/
+COPY ./dbchat/assets/3-sakila-data.sql /docker-entrypoint-initdb.d/
+
+# mysqld: the daemon for mysql
+# tell mysqld to go to datadir and leverage the mysql_schema to initalize the db
+RUN ["/usr/local/bin/docker-entrypoint.sh", "mysqld", "--datadir", "/initialized-db"]
+
+
+# final stage
+FROM mysql:latest as runner
+
+COPY --from=builder /initialized-db /var/lib/mysql

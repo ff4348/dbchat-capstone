@@ -1,7 +1,7 @@
 import re
 import os
 from joblib import load
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict
 from contextlib import asynccontextmanager
@@ -9,16 +9,16 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from langchain_openai import ChatOpenAI
-from assets.assets import ask_chatgpt, execute_query
+from dbchat.assets.assets import ask_chatgpt, execute_query
 
 # Instantiate model using LangChain integration
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
     # Initialize variables
-    openai_api_key = ""
+    openai_api_key = "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"
     config = {
-    'host': '172.17.0.2',
+    'host': '172.18.0.2',
     'port': 3306,
     'usr': 'newuser',
     'pwd': 'newpassword',
@@ -30,12 +30,14 @@ async def lifespan(app: FastAPI):
     global llm
     llm = ChatOpenAI(openai_api_key=openai_api_key)
     print('Model used:', llm.model_name)
+    print(os.path.dirname(os.path.realpath(__file__)))
 
     # Define your SQLAlchemy engine and session
     global engine
     global SessionLocal
     engine = create_engine(connection_str)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    print("SQL Alchemy engine and session defined...")
 
     yield
 
@@ -46,15 +48,21 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-# Allow all origins
+
+origins = [
+    "http://localhost:3000",
+    "https://localhost:3000",
+    "localhost:3000"
+]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
-
 
 
 # Define API input and responses using Pydantic models
@@ -66,8 +74,8 @@ class UserQuestion(BaseModel):
 class QueryResult(BaseModel):
     """Data model to define query result output"""
     model_config = ConfigDict(extra="forbid")
-    description: str
-    records_returned: int
+    query: str
+    user_friendly: str
     csv_download_link: str
 
 class UserQuestions(BaseModel):
@@ -80,38 +88,42 @@ class QueryResults(BaseModel):
     model_config = ConfigDict(extra="forbid")
     results: List[QueryResult]
 
-
 @app.post("/query", response_model=QueryResult)
 async def query_database(user_question: UserQuestion):
+    print('question asked:',user_question)
     sql_query = ask_chatgpt(user_question.question,llm)
 
     try:
         db = SessionLocal()
+        print("SessionLocal called...")
         return execute_query(db, sql_query)
     except Exception as e:
         print("Unable to connect to the database...",str(e))
-        return {'description':'Unable to connect to the database... ' + str(e), 'records_returned':0, 'csv_download_link':''}
+        return {'query':'No query generated...' + str(e), 'user_friendly':'**ERROR: Unable to connect to the database... ', 'csv_download_link':''}
     finally:
         db.close()
 
 @app.post("/queries", response_model=QueryResults)
 async def bulk_query_database(user_questions: UserQuestions):
-    sql_queries = [ask_chatgpt(user_question.question,llm) for user_question in user_questions]
-
     try:
         db = SessionLocal()
-        return [execute_query(db, sql_query) for sql_query in sql_queries]
+        # Use model to translate question to a SQL query
+        sql_queries = [ask_chatgpt(user_question.question, llm) for user_question in user_questions.questions]
+        
+        # Execute queries and gather results
+        query_results = [execute_query(db, sql_query) for sql_query in sql_queries]
+
+        # Return the results as a QueryResults object
+        return QueryResults(results=query_results)
     except Exception as e:
-        print("Unable to connect to the database...",str(e))
-        return [{'description':'Unable to connect to the database... ' + str(e), 'records_returned':0, 'csv_download_link':''}]
+        print("Unable to connect to the database...", str(e))
+        raise HTTPException(status_code=500, detail="An error occurred while processing the request. Please try again later.")
     finally:
         db.close()
 
-    
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
-# sanity check
 @app.get("/hello")
 async def hello(name: str):
     return {"message": f"Hello {name}"}

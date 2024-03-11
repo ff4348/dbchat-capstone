@@ -1,0 +1,2 @@
+CREATE USER 'newuser' IDENTIFIED BY 'newpassword';
+GRANT SELECT, RELOAD on *.* TO 'newuser' WITH GRANT OPTION;
