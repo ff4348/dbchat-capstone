@@ -16,7 +16,7 @@ from dbchat.assets.assets import ask_chatgpt, execute_query
 async def lifespan(app: FastAPI):
 
     # Initialize variables
-    openai_api_key = "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"
+    openai_api_key = ""
     config = {
     'host': '172.18.0.2',
     'port': 3306,
