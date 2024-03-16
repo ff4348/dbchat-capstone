@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
     # Initialize variables
     openai_api_key = ""
     config = {
-    'host': '172.18.0.2',
+    'host': '172.18.0.3',
     'port': 3306,
     'usr': 'newuser',
     'pwd': 'newpassword',
@@ -102,30 +102,30 @@ async def query_database(user_question: UserQuestion):
     try:
         db = SessionLocal()
         print("SessionLocal called...")
-        return execute_query(db, sql_query)
+        return execute_query(db, sql_query, user_question.question, llm)
     except Exception as e:
         print("Unable to connect to the database...",str(e))
         return {'query':'No query generated...' + str(e), 'user_friendly':'**ERROR: Unable to connect to the database... ', 'csv_download_link':''}
     finally:
         db.close()
 
-@app.post("/queries", response_model=QueryResults)
-async def bulk_query_database(user_questions: UserQuestions):
-    try:
-        db = SessionLocal()
-        # Use model to translate question to a SQL query
-        sql_queries = [t2SQL_gpt(user_question.question, llm, schema_info, db_name) for user_question in user_questions.questions]
+# @app.post("/queries", response_model=QueryResults)
+# async def bulk_query_database(user_questions: UserQuestions):
+#     try:
+#         db = SessionLocal()
+#         # Use model to translate question to a SQL query
+#         sql_queries = [t2SQL_gpt(user_question.question, llm, schema_info, db_name) for user_question in user_questions.questions]
         
-        # Execute queries and gather results
-        query_results = [execute_query(db, sql_query) for sql_query in sql_queries]
+#         # Execute queries and gather results
+#         query_results = [execute_query(db, sql_query, question, llm) for sql_query in sql_queries]
 
-        # Return the results as a QueryResults object
-        return QueryResults(results=query_results)
-    except Exception as e:
-        print("Unable to connect to the database...", str(e))
-        raise HTTPException(status_code=500, detail="An error occurred while processing the request. Please try again later.")
-    finally:
-        db.close()
+#         # Return the results as a QueryResults object
+#         return QueryResults(results=query_results)
+#     except Exception as e:
+#         print("Unable to connect to the database...", str(e))
+#         raise HTTPException(status_code=500, detail="An error occurred while processing the request. Please try again later.")
+#     finally:
+#         db.close()
 
 @app.get("/health")
 async def health():

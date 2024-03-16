@@ -16,6 +16,7 @@ langchain-openai = "^0.0.7"
 pymysql = "^1.1.0"
 cryptography = "^42.0.5"
 sqlvalidator = "^0.0.20"
+pandas = "^2.2.1"
 
 
 [tool.poetry.group.dev.dependencies]

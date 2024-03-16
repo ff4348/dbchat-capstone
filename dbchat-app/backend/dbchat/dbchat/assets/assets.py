@@ -4,31 +4,9 @@ from sqlalchemy import create_engine, inspect, text, MetaData
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine.reflection import Inspector
 from io import StringIO
+import pandas as pd
 import csv
 from sqlvalidator import parse
-
-
-def get_schema(engine):
-    metadata = MetaData()
-    metadata.reflect(bind=engine)
-    inspector = Inspector.from_engine(engine)
-    tbl_info_str = ''
-    for table_name in inspector.get_table_names():
-        tbl_info_str += f'Table - {table_name}: '
-        print(f"Table - {table_name}")
-        
-        for column in inspector.get_columns(table_name):
-            column_name = column['name']
-            column_type = column['type']
-            tbl_info_str += f"Column: {column_name}, Type: {column_type}"
-            print(f"Column: {column_name}, Type: {column_type}")
-        
-        pk_constraint = inspector.get_pk_constraint(table_name)
-        pk_columns = pk_constraint['constrained_columns']
-        tbl_info_str += f"Primary Key(s) for {table_name}: {pk_columns}"
-        print(f"Primary Key(s) for {table_name}: {pk_columns}")
-
-    return tbl_info_str
 
 # GPT T2SQL model
 def t2SQL_gpt(q,llm,schema_info,db_name):
@@ -54,8 +32,61 @@ def t2SQL_gpt(q,llm,schema_info,db_name):
     return final_response
 
 
+def get_schema(engine):
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
+    inspector = Inspector.from_engine(engine)
+    tbl_info_str = ''
+    for table_name in inspector.get_table_names():
+        tbl_info_str += f'Table - {table_name}: '
+        print(f"Table - {table_name}")
+        
+        for column in inspector.get_columns(table_name):
+            column_name = column['name']
+            column_type = column['type']
+            tbl_info_str += f"Column: {column_name}, Type: {column_type}"
+            print(f"Column: {column_name}, Type: {column_type}")
+        
+        pk_constraint = inspector.get_pk_constraint(table_name)
+        pk_columns = pk_constraint['constrained_columns']
+        tbl_info_str += f"Primary Key(s) for {table_name}: {pk_columns}"
+        print(f"Primary Key(s) for {table_name}: {pk_columns}")
+
+    return tbl_info_str
+
+def outputmodel(records_as_dicts, q, llm):
+    print("Preparing user output...")
+    df = pd.DataFrame(records_as_dicts)
+    if df.size < 20:
+        print("df.size < 20")
+        prompt_str = f"Generate an answer in couple sentences based on question and record that shows the answer. Don’t mention I provided you record. Question: {{question}}. Record: {{records_as_dicts}}."
+        output_prompt = ChatPromptTemplate.from_template(prompt_str)
+        print("Output prompt created...")
+        output_chain = output_prompt | llm
+        print("Output chain created...")
+        response = output_chain.invoke({"question": q, 'records_as_dicts':records_as_dicts}).content
+        print("Response received...")
+        final_response = response.replace('\n','')
+        return final_response
+    elif 20 <= df.size < 100:
+        print("20 <= df.size < 100")
+        prompt_str = f"Generate an answer in a paragraph based on question and record that shows the answer. Don’t mention I provided you record. Question: {{question}}. Record: {{records_as_dicts}}."
+        output_prompt = ChatPromptTemplate.from_template(prompt_str)
+        print("Output prompt created...")
+        output_chain = output_prompt | llm
+        print("Output chain created...")
+        response = output_chain.invoke({"question": q, 'records_as_dicts':records_as_dicts}).content
+        print("Response received...")
+        final_response = response.replace('\n','')
+        return final_response
+    else:
+        print("df.size >= 100")
+        return "Regrettably, we are unable to generate a concise summary of the data due to its extensive volume. Please refer to the attached table in csv format for a comprehensive overview."
+
+
+
 # Function to execute SQL query for a single user question
-def execute_query(db, sql_query):
+def execute_query(db, sql_query, question, llm):
     print("EXECUTE QUERY!")
     try:
         if "Please refine the question or tell me which tables and columns I should use to answer" in sql_query:
@@ -76,23 +107,20 @@ def execute_query(db, sql_query):
         headers = list(result.keys())
         print("Result headers:",headers)
         records = result.fetchall()
-        print("Fetch result...",records)
-        num_records = len(records)
+        print("Fetch result...")
         records_as_dicts = [dict(zip(headers,row)) for row in records]
         print("Turn records into dictionary object....")
+        user_friendly = outputmodel(records_as_dicts, question, llm)
+        print("Create user friendly response...")
     # In case of error, return error message
     except Exception as e:
         print("Unable to query the database...", str(e))
         return {"query":'No query generated... ' + str(e), "user_friendly":"**ERROR: " + str(e), "csv_download_link":''}
 
-    # Prepare user-friendly description
-    description = f"{num_records} record(s) returned."
-
     # Prepare CSV for download
     csv_data = StringIO()
     csv_writer = csv.DictWriter(csv_data, fieldnames=headers)
     csv_writer.writeheader()
-    print("get ready to..")
     csv_writer.writerows(records_as_dicts)
     print("Write data as csv...")
     csv_content = csv_data.getvalue()
@@ -101,6 +129,6 @@ def execute_query(db, sql_query):
     # Return response with data and CSV download link
     return {
         "query": sql_query,
-        "user_friendly": description,
+        "user_friendly": user_friendly,
         "csv_download_link": f"data:text/csv;charset=utf-8,{csv_content}"
     }
