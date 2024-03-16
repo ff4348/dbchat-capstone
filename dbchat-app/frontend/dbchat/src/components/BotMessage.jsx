@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 
 export default function BotMessage({query, user_friendly, csv_download_link}) {
-  const [isLoading, setLoading] = useState(true);
+  const [isLoaded, setLoaded] = useState(true);
   const [message, setMessage] = useState(null); // Start with null to accommodate any type
 
   useEffect(() => {
@@ -9,11 +9,11 @@ export default function BotMessage({query, user_friendly, csv_download_link}) {
       console.log('BotMessage.jsx loaded...');
       setMessage({query,user_friendly,csv_download_link});
       console.log('BotMessage updated...');
-      setLoading(false);
+      setLoaded(false);
       console.log('Loading set to false...');
     }
     loadMessage();
-  });
+  }, []);
 
 
   const isWelcomeMessage = (user_friendly) => {
@@ -44,13 +44,13 @@ export default function BotMessage({query, user_friendly, csv_download_link}) {
     console.log("unableToAnswer function loaded...");
     console.log("unableToAnswer received value",user_friendly);
     console.log("Type of this value:",typeof user_friendly);
-    console.log(user_friendly === "I can't answer with the given information. Please refine the question or tell me which tables and columns I should use to answer.")
-    return user_friendly === "I can't answer with the given information. Please refine the question or tell me which tables and columns I should use to answer.";
+    console.log(user_friendly.includes("Please refine the question or tell me which tables and columns I should use to answer."))
+    return user_friendly.includes("Please refine the question or tell me which tables and columns I should use to answer.");
   };
 
   return (
     <div className="message-container">
-      {isLoading ? (
+      {isLoaded ? (
         <div className="bot-message">"..."</div>
       ) : (
         <>

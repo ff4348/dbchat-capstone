@@ -9,14 +9,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from langchain_openai import ChatOpenAI
-from dbchat.assets.assets import ask_chatgpt, execute_query
+from dbchat.assets.assets import t2SQL_gpt, execute_query, get_schema
 
 # Instantiate model using LangChain integration
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
     # Initialize variables
-    openai_api_key = ""
+    openai_api_key = "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"
     config = {
     'host': '172.18.0.2',
     'port': 3306,
@@ -24,6 +24,8 @@ async def lifespan(app: FastAPI):
     'pwd': 'newpassword',
     'db': 'sakila'
     }
+    global db_name
+    db_name = config.get('db')
     connection_str = f"mysql+pymysql://{config.get('usr')}:{config.get('pwd')}@{config.get('host')}:{config.get('port')}/{config.get('db')}"
 
     # Instantiate model using LangChain
@@ -35,9 +37,13 @@ async def lifespan(app: FastAPI):
     # Define your SQLAlchemy engine and session
     global engine
     global SessionLocal
-    engine = create_engine(connection_str)
+    engine = create_engine(connection_str, connect_args={'init_command': 'SET SESSION max_execution_time=20000'})
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     print("SQL Alchemy engine and session defined...")
+
+    # Retrieve database schema
+    global schema_info
+    schema_info = get_schema(engine)
 
     yield
 
@@ -91,7 +97,7 @@ class QueryResults(BaseModel):
 @app.post("/query", response_model=QueryResult)
 async def query_database(user_question: UserQuestion):
     print('question asked:',user_question)
-    sql_query = ask_chatgpt(user_question.question,llm)
+    sql_query = t2SQL_gpt(user_question.question,llm,schema_info,db_name)
 
     try:
         db = SessionLocal()
@@ -108,7 +114,7 @@ async def bulk_query_database(user_questions: UserQuestions):
     try:
         db = SessionLocal()
         # Use model to translate question to a SQL query
-        sql_queries = [ask_chatgpt(user_question.question, llm) for user_question in user_questions.questions]
+        sql_queries = [t2SQL_gpt(user_question.question, llm, schema_info, db_name) for user_question in user_questions.questions]
         
         # Execute queries and gather results
         query_results = [execute_query(db, sql_query) for sql_query in sql_queries]

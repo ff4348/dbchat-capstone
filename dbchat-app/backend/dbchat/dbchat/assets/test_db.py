@@ -1,6 +1,29 @@
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, inspect, text, MetaData
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine.reflection import Inspector
 from assets import execute_query
+
+def get_schema(engine):
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
+    inspector = Inspector.from_engine(engine)
+    tbl_info_str = ''
+    for table_name in inspector.get_table_names():
+        tbl_info_str += f'Table - {table_name}: '
+        print(f"Table - {table_name}")
+        
+        for column in inspector.get_columns(table_name):
+            column_name = column['name']
+            column_type = column['type']
+            tbl_info_str += f"Column: {column_name}, Type: {column_type}"
+            print(f"Column: {column_name}, Type: {column_type}")
+        
+        pk_constraint = inspector.get_pk_constraint(table_name)
+        pk_columns = pk_constraint['constrained_columns']
+        tbl_info_str += f"Primary Key(s) for {table_name}: {pk_columns}"
+        print(f"Primary Key(s) for {table_name}: {pk_columns}")
+
+    return tbl_info_str
 
 # Pull docker image
 ## docker pull mysql/mysql-server:latest
@@ -30,7 +53,7 @@ from assets import execute_query
 
 # specify database configurations
 config = {
-'host': '172.17.0.2',
+'host': '172.18.0.2',
 'port': 3306,
 'usr': 'newuser',
 'pwd': 'newpassword',
@@ -40,12 +63,17 @@ connection_str = f"mysql+pymysql://{config.get('usr')}:{config.get('pwd')}@{conf
 
 # test connection
 print('test connection...')
-request = '"SELECT * \nFROM customer limit 10"'
+request = '"SELECT * \nFROM customer limit 10 asjdflk"'
 request = request.replace('\n','')
 request = request.replace('"','')
-engine = create_engine(connection_str)
+engine = create_engine(connection_str,
+    connect_args={'init_command': 'SET SESSION max_execution_time=30000'})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 db = SessionLocal()
+
 result = execute_query(db, request)
 
-print(result)
+
+# schema_inf = get_schema(engine)
+# print("\n\nSCHEMA")
+# print(schema_inf[0])

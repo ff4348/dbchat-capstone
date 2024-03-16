@@ -1,3 +1,6 @@
+#!/bin/bash
+cd dbchat
+
 RESOURCE_NM="dbchat_frontend"
 NETWORK_NM="dbchat_network"
 CONTAINER_ID=$(docker ps -aqf "name=${RESOURCE_NM}")
