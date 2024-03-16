@@ -16,7 +16,7 @@ from dbchat.assets.assets import t2SQL_gpt, execute_query, get_schema
 async def lifespan(app: FastAPI):
 
     # Initialize variables
-    openai_api_key = "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"
+    openai_api_key = ""
     config = {
     'host': '172.18.0.2',
     'port': 3306,
