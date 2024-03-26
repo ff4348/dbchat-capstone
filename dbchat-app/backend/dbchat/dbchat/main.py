@@ -9,7 +9,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from langchain_openai import ChatOpenAI
-from dbchat.assets.assets import t2SQL_gpt, execute_query, get_schema
+from dbchat.assets.assets import t2SQL_gpt, t2SQL_sqlcoder15B, execute_query, get_schema
+import boto3
+import json
 
 # Instantiate model using LangChain integration
 @asynccontextmanager
@@ -27,6 +29,13 @@ async def lifespan(app: FastAPI):
     global db_name
     db_name = config.get('db')
     connection_str = f"mysql+pymysql://{config.get('usr')}:{config.get('pwd')}@{config.get('host')}:{config.get('port')}/{config.get('db')}"
+
+    # Create a SageMaker runtime client object using your IAM role ARN
+    global runtime
+    runtime = boto3.client('sagemaker-runtime',
+                       aws_access_key_id='',
+                       aws_secret_access_key="",
+                       region_name="")
 
     # Instantiate model using LangChain
     global llm
@@ -109,6 +118,21 @@ async def query_database(user_question: UserQuestion):
     finally:
         db.close()
 
+
+@app.post("/sqlcoder-query", response_model=QueryResult)
+async def query_database(user_question: UserQuestion):
+    print('question asked:',user_question)
+    sql_query = t2SQL_sqlcoder15B(runtime,user_question,schema_info)
+
+    try:
+        db = SessionLocal()
+        print("SessionLocal called...")
+        return execute_query(db, sql_query, user_question.question, llm)
+    except Exception as e:
+        print("Unable to connect to the database...",str(e))
+        return {'query':'No query generated...' + str(e), 'user_friendly':'**ERROR: Unable to connect to the database... ', 'csv_download_link':''}
+    finally:
+        db.close()
 # @app.post("/queries", response_model=QueryResults)
 # async def bulk_query_database(user_questions: UserQuestions):
 #     try:
