@@ -1,4 +1,5 @@
 import re
+from dotenv import load_dotenv
 import os
 from joblib import load
 from fastapi import FastAPI, HTTPException
@@ -11,31 +12,24 @@ from sqlalchemy.orm import sessionmaker
 from langchain_openai import ChatOpenAI
 from dbchat.assets.assets import t2SQL_gpt, t2SQL_sqlcoder15B, execute_query, get_schema
 import boto3
-import json
 
 # Instantiate model using LangChain integration
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
-    # Initialize variables
-    openai_api_key = ""
-    config = {
-    'host': '172.18.0.3',
-    'port': 3306,
-    'usr': 'newuser',
-    'pwd': 'newpassword',
-    'db': 'sakila'
-    }
+    # Initialize Secerts
+    load_dotenv()
+    openai_api_key = os.getenv("OPENAI_API_KEY")
     global db_name
-    db_name = config.get('db')
-    connection_str = f"mysql+pymysql://{config.get('usr')}:{config.get('pwd')}@{config.get('host')}:{config.get('port')}/{config.get('db')}"
+    db_name = os.getenv("PRIM_DB_NAME")
+    connection_str = f"mysql+pymysql://{os.getenv('PRIM_DB_USER')}:{os.getenv('PRIM_DB_PWD')}@{os.getenv('PRIM_DB_HOST')}:{os.getenv('PRIM_DB_PORT')}/{db_name}"
 
     # Create a SageMaker runtime client object using your IAM role ARN
     global runtime
     runtime = boto3.client('sagemaker-runtime',
-                       aws_access_key_id='',
-                       aws_secret_access_key="",
-                       region_name="")
+                       aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+                       aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                       region_name=os.getenv("AWS_REGION"))
 
     # Instantiate model using LangChain
     global llm
@@ -64,12 +58,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-origins = [
-    "http://localhost:3000",
-    "https://localhost:3000",
-    "localhost:3000"
-]
 
+origins = [
+    "http://localhost:8501",
+    "https://localhost:8501"
+]
 
 app.add_middleware(
     CORSMiddleware,

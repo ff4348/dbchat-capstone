@@ -9,7 +9,6 @@ import csv
 from sqlvalidator import parse
 import json
 
-    
 def t2SQL_sqlcoder15B(runtime, user_question = 'how many customers do we have?', table_metadata_string_DDL_statements = 'CREATE TABLE customer (customer_id SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,store_id TINYINT UNSIGNED NOT NULL,first_name VARCHAR(45) NOT NULL,last_name VARCHAR(45) NOT NULL,email VARCHAR(50) DEFAULT NULL,address_id SMALLINT UNSIGNED NOT NULL,active BOOLEAN NOT NULL DEFAULT TRUE,create_date DATETIME NOT NULL,last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,PRIMARY KEY  (customer_id),KEY idx_fk_store_id (store_id),KEY idx_fk_address_id (address_id),KEY idx_last_name (last_name),CONSTRAINT fk_customer_address FOREIGN KEY (address_id) REFERENCES address (address_id) ON DELETE RESTRICT ON UPDATE CASCADE,CONSTRAINT fk_customer_store FOREIGN KEY (store_id) REFERENCES store (store_id) ON DELETE RESTRICT ON UPDATE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;'):
     print("Text2SQL using sqlcoder2")
     prompt = f'''
@@ -25,10 +24,18 @@ def t2SQL_sqlcoder15B(runtime, user_question = 'how many customers do we have?',
     ### Answer
     [SQL]
     '''
+
+    # hyperparameters for model
+    parameters = {
+        "temperature": 1, # controls randomness of generated text
+        "max_new_tokens": 200 # limits length of generated text
+    }
+
     # Invoke the endpoint using the `invoke_endpoint` method of the SageMaker runtime client object
     response = runtime.invoke_endpoint(EndpointName='huggingface-pytorch-tgi-inference-2024-03-26-22-59-39-877',
                                    ContentType='application/json',
-                                   Body=json.dumps({"inputs": prompt})
+                                   Body=json.dumps({"inputs": prompt,
+                                                    "parameters": parameters})
                                    )
 
     # Parse the output data returned by the endpoint

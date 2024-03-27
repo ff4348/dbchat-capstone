@@ -1,9 +1,15 @@
 from openai import OpenAI
+from dotenv import load_dotenv
 import streamlit as st
+import requests
+import json
+import os
 
 st.title("ChatGPT-like clone")
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+load_dotenv()
+openai_api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=openai_api_key)
 
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-3.5-turbo"
@@ -50,3 +56,10 @@ if db == 'C':
     table = st.sidebar.selectbox(
     'Select table',
     ('C.1', 'C.2', 'C.3'))
+
+
+inputs = {"question":"how many customers do we have?"}
+print("Getting response!")
+response = requests.post(url = "http://dbchat_backend:8000/query", data = json.dumps(inputs))
+print("response status",response.text)
+st.subheader(f"Response from API: {response.text}")
