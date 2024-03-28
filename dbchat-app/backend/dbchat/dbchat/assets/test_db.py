@@ -2,28 +2,32 @@ from sqlalchemy import create_engine, inspect, text, MetaData
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine.reflection import Inspector
 from assets import execute_query
+import requests
 
 def get_schema(engine):
     metadata = MetaData()
     metadata.reflect(bind=engine)
     inspector = Inspector.from_engine(engine)
     tbl_info_str = ''
+    tbl_info_dict = {"Tables":{}}
     for table_name in inspector.get_table_names():
         tbl_info_str += f'Table - {table_name}: '
         print(f"Table - {table_name}")
-        
+        tbl_info_dict['Tables'][table_name] = []
         for column in inspector.get_columns(table_name):
+            tbl_info_dict['Tables'][table_name].append(str(column['name'])+'|'+str(column['type']))
             column_name = column['name']
             column_type = column['type']
             tbl_info_str += f"Column: {column_name}, Type: {column_type}"
             print(f"Column: {column_name}, Type: {column_type}")
-        
+        tbl_info_dict['Tables'][table_name].sort()
+
         pk_constraint = inspector.get_pk_constraint(table_name)
         pk_columns = pk_constraint['constrained_columns']
         tbl_info_str += f"Primary Key(s) for {table_name}: {pk_columns}"
         print(f"Primary Key(s) for {table_name}: {pk_columns}")
 
-    return tbl_info_str
+    return tbl_info_str, tbl_info_dict
 
 # Pull docker image
 ## docker pull mysql/mysql-server:latest
@@ -53,7 +57,7 @@ def get_schema(engine):
 
 # specify database configurations
 config = {
-'host': '172.18.0.2',
+'host': '172.18.0.3',
 'port': 3306,
 'usr': 'newuser',
 'pwd': 'newpassword',
@@ -71,9 +75,18 @@ engine = create_engine(connection_str,
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 db = SessionLocal()
 
-result = execute_query(db, request)
+# result = execute_query(db, request)
 
 
-# schema_inf = get_schema(engine)
+# schema_inf, dict_inf = get_schema(engine)
 # print("\n\nSCHEMA")
-# print(schema_inf[0])
+# print(dict_inf)
+
+# Function that will hit backend API to get schema information to populate tables
+def get_schema_api():
+    print('hi')
+    response = requests.post(url = "http://localhost:8000/schema")
+    print('response:',response)
+    return response
+
+print(get_schema_api())

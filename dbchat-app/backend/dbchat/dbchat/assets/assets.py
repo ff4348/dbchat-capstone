@@ -73,22 +73,25 @@ def get_schema(engine):
     metadata.reflect(bind=engine)
     inspector = Inspector.from_engine(engine)
     tbl_info_str = ''
+    tbl_info_dict = {"Tables":{}}
     for table_name in inspector.get_table_names():
         tbl_info_str += f'Table - {table_name}: '
         print(f"Table - {table_name}")
-        
+        tbl_info_dict['Tables'][table_name] = []
         for column in inspector.get_columns(table_name):
+            tbl_info_dict['Tables'][table_name].append(str(column['name'])+'|'+str(column['type']))
             column_name = column['name']
             column_type = column['type']
             tbl_info_str += f"Column: {column_name}, Type: {column_type}"
             print(f"Column: {column_name}, Type: {column_type}")
-        
+        tbl_info_dict['Tables'][table_name].sort()
+
         pk_constraint = inspector.get_pk_constraint(table_name)
         pk_columns = pk_constraint['constrained_columns']
         tbl_info_str += f"Primary Key(s) for {table_name}: {pk_columns}"
         print(f"Primary Key(s) for {table_name}: {pk_columns}")
 
-    return tbl_info_str
+    return tbl_info_str, tbl_info_dict
 
 def outputmodel(records_as_dicts, q, llm):
     print("Preparing user output...")
@@ -122,6 +125,7 @@ def outputmodel(records_as_dicts, q, llm):
 
 
 # Function to execute SQL query for a single user question
+# Returns user friendly response, sql query executed, and data
 def execute_query(db, sql_query, question, llm):
     print("EXECUTE QUERY!")
     try:

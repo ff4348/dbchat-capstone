@@ -46,7 +46,8 @@ async def lifespan(app: FastAPI):
 
     # Retrieve database schema
     global schema_info
-    schema_info = get_schema(engine)
+    global schema_dict
+    schema_info, schema_dict = get_schema(engine)
 
     yield
 
@@ -126,6 +127,12 @@ async def query_database(user_question: UserQuestion):
         return {'query':'No query generated...' + str(e), 'user_friendly':'**ERROR: Unable to connect to the database... ', 'csv_download_link':''}
     finally:
         db.close()
+
+@app.get("/schema")
+async def query_database():
+    print(schema_dict)
+    return schema_dict
+
 # @app.post("/queries", response_model=QueryResults)
 # async def bulk_query_database(user_questions: UserQuestions):
 #     try:
