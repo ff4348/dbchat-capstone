@@ -18,17 +18,20 @@ def display_response_with_details(details):
     """
     st.markdown(details['user_friendly'])
 
-    with st.expander("Table Preview"):
-        st.write(f"{details['table_output_msg']}")
-        st.dataframe(details['table_preview'], use_container_width=True)
+    if (details['table_output_msg'] != 'NA') or (details['table_preview'] != 'NA'):
+        with st.expander("Table Preview"):
+            st.write(f"{details['table_output_msg']}")
+            st.dataframe(details['table_preview'], use_container_width=True)
 
-    # SQL Code Expander
-    with st.expander("SQL Code"):
-        st.code(details['sql_code'])
+    if (details['sql_code'] != 'NA'):
+        # SQL Code Expander
+        with st.expander("SQL Code"):
+            st.code(details['sql_code'])
 
-    # Download CSV Button
-    with open(details['csv_file_path'], "rb") as file:
-        st.download_button("Download full data as CSV", data=file, file_name="full_data.csv",key=datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
+    if (details['csv_file_path'] != 'NA'):
+        # Download CSV Button
+        with open(details['csv_file_path'], "rb") as file:
+            st.download_button("Download full data as CSV", data=file, file_name="full_data.csv",key=datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
 
 
 def generate_tab_output(csv_data):
@@ -56,17 +59,35 @@ def generate_tab_output(csv_data):
 
 def handle_user_input(prompt):
     response = json.loads(requests.post(url = "http://dbchat_backend:8000/query", data = json.dumps({"question":prompt})).text)
-    output_msg, display_df, csv_file_path = generate_tab_output(response['csv_download_link'])
 
-    
-    # Response details dictionary updated with the CSV path
-    response_details = {
-        "user_friendly": response['user_friendly'],
-        "table_output_msg": output_msg,
-        "table_preview": display_df,
-        "sql_code": response['query'],
-        "csv_file_path": csv_file_path  # CSV file path for full data
-    }
+    if 'refine the question or tell me which tables' in response['user_friendly'].lower():
+        response_details = {
+            "user_friendly": response['user_friendly'],
+            "table_output_msg": 'NA',
+            "table_preview": 'NA',
+            "sql_code": 'NA',
+            "csv_file_path": 'NA'  # CSV file path for full data
+        }
+        
+    elif response['csv_download_link'].strip() == '':
+        response_details = {
+            "user_friendly": response['user_friendly'],
+            "table_output_msg": 'NA',
+            "table_preview": 'NA',
+            "sql_code": 'NA',
+            "csv_file_path": 'NA'  # CSV file path for full data
+        }
+
+    else:
+        output_msg, display_df, csv_file_path = generate_tab_output(response['csv_download_link'])
+        # Response details dictionary updated with the CSV path
+        response_details = {
+            "user_friendly": response['user_friendly'],
+            "table_output_msg": output_msg,
+            "table_preview": display_df,
+            "sql_code": response['query'],
+            "csv_file_path": csv_file_path  # CSV file path for full data
+        }
 
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.session_state.messages.append({"role": "assistant", "content": response_details})
@@ -125,14 +146,6 @@ def display_feedback_options(idx):
 
             ##### SEND TO DATABASE (single database to store user feedback) HERE ########
 
-# Function that will hit backend API to get schema information to populate tables
-def get_schema():
-    response = requests.post(url = "http://dbchat_backend:8000/schema").json()
-    print(response)
-    return response
-
-    
-
 def main():
     """
     The main entry point for the Streamlit application.
@@ -143,26 +156,17 @@ def main():
     st.title("DBChat")
     st.subheader("Query your database using natural language")
 
-    schema_info = get_schema()
+    schema_info = requests.get(url = "http://dbchat_backend:8000/schema").json()
 
-    db = st.sidebar.selectbox(
-        "Please select the database:",
-    ("products", "sales", "inventory"))
-
+    databases = [database for database in sorted(list(schema_info['Databases'].keys()))]
+    db = st.sidebar.selectbox("Please select the database",databases)
     st.sidebar.write('You selected:', db)
 
-    if db == 'products': 
-        table = st.sidebar.selectbox(
-        'Select table',
-        ('A.1', 'A.2', 'A.3'))
-    if db == 'sales': 
-        table = st.sidebar.selectbox(
-        'Select table',
-        ('B.1', 'B.2', 'B.3'))
-    if db == 'inventory': 
-        table = st.sidebar.selectbox(
-        'Select table',
-        ('C.1', 'C.2', 'C.3'))
+    tables = [tbl for tbl in schema_info['Databases'][db]['Tables'].keys()]
+    table = st.sidebar.selectbox('Select table',tables)
+    
+    columns = [col.split('|')[0].strip() for col in schema_info['Databases'][db]['Tables'][table]]
+    column = st.sidebar.selectbox('Select column',columns)
 
     if "messages" not in st.session_state:
         st.session_state.messages = []

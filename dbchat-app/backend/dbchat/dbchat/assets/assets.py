@@ -7,7 +7,9 @@ from io import StringIO
 import pandas as pd
 import csv
 from sqlvalidator import parse
+from dotenv import load_dotenv
 import json
+import os 
 
 def t2SQL_sqlcoder15B(runtime, user_question = 'how many customers do we have?', table_metadata_string_DDL_statements = 'CREATE TABLE customer (customer_id SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,store_id TINYINT UNSIGNED NOT NULL,first_name VARCHAR(45) NOT NULL,last_name VARCHAR(45) NOT NULL,email VARCHAR(50) DEFAULT NULL,address_id SMALLINT UNSIGNED NOT NULL,active BOOLEAN NOT NULL DEFAULT TRUE,create_date DATETIME NOT NULL,last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,PRIMARY KEY  (customer_id),KEY idx_fk_store_id (store_id),KEY idx_fk_address_id (address_id),KEY idx_last_name (last_name),CONSTRAINT fk_customer_address FOREIGN KEY (address_id) REFERENCES address (address_id) ON DELETE RESTRICT ON UPDATE CASCADE,CONSTRAINT fk_customer_store FOREIGN KEY (store_id) REFERENCES store (store_id) ON DELETE RESTRICT ON UPDATE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;'):
     print("Text2SQL using sqlcoder2")
@@ -73,23 +75,34 @@ def get_schema(engine):
     metadata.reflect(bind=engine)
     inspector = Inspector.from_engine(engine)
     tbl_info_str = ''
-    tbl_info_dict = {"Tables":{}}
-    for table_name in inspector.get_table_names():
-        tbl_info_str += f'Table - {table_name}: '
-        print(f"Table - {table_name}")
-        tbl_info_dict['Tables'][table_name] = []
-        for column in inspector.get_columns(table_name):
-            tbl_info_dict['Tables'][table_name].append(str(column['name'])+'|'+str(column['type']))
-            column_name = column['name']
-            column_type = column['type']
-            tbl_info_str += f"Column: {column_name}, Type: {column_type}"
-            print(f"Column: {column_name}, Type: {column_type}")
-        tbl_info_dict['Tables'][table_name].sort()
+    tbl_info_dict = {"Databases":{}}
+    load_dotenv()
+    acceptable_databases = list(os.getenv('ALLOWED_DBS').split(":"))
+    db_list = list(set(inspector.get_schema_names()).intersection(set(acceptable_databases)))
 
-        pk_constraint = inspector.get_pk_constraint(table_name)
-        pk_columns = pk_constraint['constrained_columns']
-        tbl_info_str += f"Primary Key(s) for {table_name}: {pk_columns}"
-        print(f"Primary Key(s) for {table_name}: {pk_columns}")
+    for database_name in db_list:
+        tbl_info_dict["Databases"][database_name] = {"Tables": {}}
+        database_tables = inspector.get_table_names(schema=database_name)
+        
+        for table_name in database_tables:
+            full_table_name = f"{database_name}.{table_name}"
+            tbl_info_str += f'Table - {full_table_name}: '
+            #print(f"Table - {full_table_name}")
+            tbl_info_dict["Databases"][database_name]["Tables"][table_name] = []
+            
+            for column in inspector.get_columns(table_name, schema=database_name):
+                column_name = column['name']
+                column_type = column['type']
+                tbl_info_dict["Databases"][database_name]["Tables"][table_name].append(f"{column_name}|{column_type}")
+                tbl_info_str += f"Column: {column_name}, Type: {column_type} "
+                #print(f"Column: {column_name}, Type: {column_type}")
+            
+            tbl_info_dict["Databases"][database_name]["Tables"][table_name].sort()
+            
+            pk_constraint = inspector.get_pk_constraint(table_name, schema=database_name)
+            pk_columns = pk_constraint['constrained_columns']
+            tbl_info_str += f"Primary Key(s) for {full_table_name}: {pk_columns} "
+            #print(f"Primary Key(s) for {full_table_name}: {pk_columns}")
 
     return tbl_info_str, tbl_info_dict
 
