@@ -4,6 +4,8 @@ from io import StringIO
 from datetime import datetime
 import requests
 import json
+import openai 
+
 
 def display_response_with_details(details):
     """
@@ -58,40 +60,48 @@ def generate_tab_output(csv_data):
     return output_msg, output_table, csv_file_path
 
 def handle_user_input(prompt):
-    response = json.loads(requests.post(url = "http://dbchat_backend:8000/query", data = json.dumps({"question":prompt})).text)
 
-    if 'refine the question or tell me which tables' in response['user_friendly'].lower():
-        response_details = {
-            "user_friendly": response['user_friendly'],
-            "table_output_msg": 'NA',
-            "table_preview": 'NA',
-            "sql_code": 'NA',
-            "csv_file_path": 'NA'  # CSV file path for full data
-        }
-        
-    elif response['csv_download_link'].strip() == '':
-        response_details = {
-            "user_friendly": response['user_friendly'],
-            "table_output_msg": 'NA',
-            "table_preview": 'NA',
-            "sql_code": 'NA',
-            "csv_file_path": 'NA'  # CSV file path for full data
-        }
-
+    if len(prompt) > 200: 
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.messages.append({"role": "assistant", "content": 'Please shorten your prompt to less than 200 characters'})
     else:
-        output_msg, display_df, csv_file_path = generate_tab_output(response['csv_download_link'])
-        # Response details dictionary updated with the CSV path
-        response_details = {
-            "user_friendly": response['user_friendly'],
-            "table_output_msg": output_msg,
-            "table_preview": display_df,
-            "sql_code": response['query'],
-            "csv_file_path": csv_file_path  # CSV file path for full data
-        }
+  
+        response = json.loads(requests.post(url = "http://dbchat_backend:8000/query", data = json.dumps({"question":prompt})).text)
 
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.session_state.messages.append({"role": "assistant", "content": response_details})
+        if 'refine the question or tell me which tables' in response['user_friendly'].lower():
+            response_details = {
+                "user_friendly": response['user_friendly'],
+                "table_output_msg": 'NA',
+                "table_preview": 'NA',
+                "sql_code": 'NA',
+                "csv_file_path": 'NA'  # CSV file path for full data
+            }
+            
+        elif response['csv_download_link'].strip() == '':
+            response_details = {
+                "user_friendly": response['user_friendly'],
+                "table_output_msg": 'NA',
+                "table_preview": 'NA',
+                "sql_code": 'NA',
+                "csv_file_path": 'NA'  # CSV file path for full data
+            }
 
+        else:
+            output_msg, display_df, csv_file_path = generate_tab_output(response['csv_download_link'])
+            # Response details dictionary updated with the CSV path
+            response_details = {
+                "user_friendly": response['user_friendly'],
+                "table_output_msg": output_msg,
+                "table_preview": display_df,
+                "sql_code": response['query'],
+                "csv_file_path": csv_file_path  # CSV file path for full data
+            }
+
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.messages.append({"role": "assistant", "content": response_details})
+
+def reset_conversation():
+  st.session_state.messages = []
 
 def display_feedback_options(idx):
     """
@@ -146,6 +156,7 @@ def display_feedback_options(idx):
 
             ##### SEND TO DATABASE (single database to store user feedback) HERE ########
 
+
 def main():
     """
     The main entry point for the Streamlit application.
@@ -153,42 +164,57 @@ def main():
     chat interface, and handles user input and feedback mechanisms.
     """
 
-    st.title("DBChat")
-    st.subheader("Query your database using natural language")
+    tab1, tab2, tab3 = st.tabs(["DBChat", "User Guide", "Model Details"])
+    with tab1:
+        st.title("DBChat")
+        st.subheader("Query your database using natural language")
 
-    schema_info = requests.get(url = "http://dbchat_backend:8000/schema").json()
+        schema_info = requests.get(url = "http://dbchat_backend:8000/schema").json()
 
-    databases = [database for database in sorted(list(schema_info['Databases'].keys()))]
-    db = st.sidebar.selectbox("Please select the database",databases)
-    st.sidebar.write('You selected:', db)
+        databases = [database for database in sorted(list(schema_info['Databases'].keys()))]
+        db = st.sidebar.selectbox("Please select the database",databases)
+        st.sidebar.write('You selected:', db)
 
-    tables = [tbl for tbl in schema_info['Databases'][db]['Tables'].keys()]
-    table = st.sidebar.selectbox('Select table',tables)
-    
-    columns = [col.split('|')[0].strip() for col in schema_info['Databases'][db]['Tables'][table]]
-    column = st.sidebar.selectbox('Select column',columns)
+        tables = [tbl for tbl in schema_info['Databases'][db]['Tables'].keys()]
+        table = st.sidebar.selectbox('Available tables',tables)
+        
+        columns = [col.split('|')[0].strip() for col in schema_info['Databases'][db]['Tables'][table]]
+        column = st.sidebar.selectbox('Available columns',columns)
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+        st.button('Reset Chat', on_click=reset_conversation)
 
-    # Display all messages
-    for idx, message in enumerate(st.session_state.messages, start=1):
-        role = message["role"]
-        content = message["content"]
-        with st.chat_message(role):
-            if isinstance(content, str):
-                st.markdown(content)
-            else:  # Assume it's a detailed response
-                display_response_with_details(content)
-            if role == "assistant":
-                display_feedback_options(idx)
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
 
-    # User input
-    prompt = st.chat_input("Type your question here...")
-    if prompt:  # If a non-empty string is entered by the user
-        handle_user_input(prompt)
-        # Rerun the app to ensure new messages are displayed immediately
-        st.rerun()
+        # Display all messages
+        for idx, message in enumerate(st.session_state.messages, start=1):
+            role = message["role"]
+            content = message["content"]
+            with st.chat_message(role):
+                if isinstance(content, str):
+                    st.markdown(content)
+                else:  # Assume it's a detailed response
+                    display_response_with_details(content)
+                if role == "assistant":
+                    display_feedback_options(idx)
+
+        # User input
+        prompt = st.chat_input("Type your question here...")
+        if prompt:  # If a non-empty string is entered by the user
+            handle_user_input(prompt)
+            # Rerun the app to ensure new messages are displayed immediately
+            st.rerun()
+    with tab2: 
+        st.header('About', divider='grey')
+        st.markdown('DBChat allows you to query databases using natural language without writing any SQL. Leveraging a state of the art SQLCoder language model with 15 billion parameters, DBChat converts your natural language into an efficient SQL query and returns the result in an easy to read format. Additionally, you can view the query itself and download the result as a CSV for further analysis.')
+        st.header('Tips for writing effective prompts: ', divider='grey')
+        st.markdown("- Avoid vague, incomplete, or open-ended statements (ex. Tell me about our users).")
+        st.markdown("- Include filtering criteria (ex. date) to reduce the size of the result.")
+        st.markdown("- Ensure your question can actually be answered by the available database by inspecting the available tables and columns.")
+        #st.markdown("- Use the clear chat button to initialize a new line of questioning. This helps the model understand if you are asking a follow up question or not.")
+    with tab3: 
+        st.header('About SQLCoder', divider='grey')
+        st.markdown("Defog's SQLCoder is a state-of-the-art LLM for converting natural language questions to SQL queries. SQLCoder is a 15B parameter model that slightly outperforms gpt-3.5-turbo for natural language to SQL generation tasks on our sql-eval framework, and significantly outperforms all popular open-source models. It also significantly outperforms text-davinci-003, a model that's more than 10 times its size. SQLCoder is fine-tuned on a base StarCoder model.")
 
 if __name__ == "__main__":
     main()
