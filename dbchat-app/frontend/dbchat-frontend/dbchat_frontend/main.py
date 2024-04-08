@@ -156,7 +156,6 @@ def display_feedback_options(idx):
 
             ##### SEND TO DATABASE (single database to store user feedback) HERE ########
 
-
 def main():
     """
     The main entry point for the Streamlit application.
@@ -178,8 +177,22 @@ def main():
         tables = [tbl for tbl in schema_info['Databases'][db]['Tables'].keys()]
         table = st.sidebar.selectbox('Available tables',tables)
         
-        columns = [col.split('|')[0].strip() for col in schema_info['Databases'][db]['Tables'][table]]
-        column = st.sidebar.selectbox('Available columns',columns)
+        columns_info = schema_info['Databases'][db]['Tables'][table]
+
+        # Extracting column names and data types
+        column_names = []
+        data_types = []
+        for col_info in columns_info:
+            col_name, data_type = col_info.split('|')
+            column_names.append(col_name.strip())
+            data_types.append(data_type.strip())
+
+        # Creating a DataFrame to display in a table
+        data = {'Column Name': column_names, 'Data Type': data_types}
+        df = pd.DataFrame(data)
+
+        # Displaying the table in the sidebar
+        st.sidebar.table(df)
 
         st.button('Reset Chat', on_click=reset_conversation)
 
@@ -200,10 +213,10 @@ def main():
 
         # User input
         prompt = st.chat_input("Type your question here...")
-        if prompt:  # If a non-empty string is entered by the user
+        if prompt: 
             handle_user_input(prompt)
             # Rerun the app to ensure new messages are displayed immediately
-            st.rerun()
+            st.rerun() 
     with tab2: 
         st.header('About', divider='grey')
         st.markdown('DBChat allows you to query databases using natural language without writing any SQL. Leveraging a state of the art SQLCoder language model with 15 billion parameters, DBChat converts your natural language into an efficient SQL query and returns the result in an easy to read format. Additionally, you can view the query itself and download the result as a CSV for further analysis.')
