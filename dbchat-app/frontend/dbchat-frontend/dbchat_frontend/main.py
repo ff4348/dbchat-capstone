@@ -59,16 +59,27 @@ def generate_tab_output(csv_data):
 
     return output_msg, output_table, csv_file_path
 
-def handle_user_input(prompt):
+def handle_user_input(prompt, model_selection):
 
     if len(prompt) > 200: 
         st.session_state.messages.append({"role": "user", "content": prompt})
         st.session_state.messages.append({"role": "assistant", "content": 'Please shorten your prompt to less than 200 characters'})
     else:
-  
-        response = json.loads(requests.post(url = "http://dbchat_backend:8000/query", data = json.dumps({"question":prompt})).text)
 
-        if 'refine the question or tell me which tables' in response['user_friendly'].lower():
+        if model_selection == 'gpt4':
+            response = json.loads(requests.post(url = "http://dbchat_backend:8000/query", data = json.dumps({"question":prompt})).text)
+        elif model_selection == 'defog/sqlcoder':
+            response = json.loads(requests.post(url = "http://dbchat_backend:8000/sqlcoder-query", data = json.dumps({"question":prompt})).text)
+        else:
+            response_details = {
+                "user_friendly": "Unable to query using current model selection...",
+                "table_output_msg": "NA",
+                "table_preview": "NA",
+                "sql_code": "NA",
+                "csv_file_path": "NA"  # CSV file path for full data
+            }
+
+        if 'Unable to connect to the database' in response['user_friendly'].lower():
             response_details = {
                 "user_friendly": response['user_friendly'],
                 "table_output_msg": 'NA',
@@ -76,6 +87,16 @@ def handle_user_input(prompt):
                 "sql_code": 'NA',
                 "csv_file_path": 'NA'  # CSV file path for full data
             }
+
+        elif 'Please try asking again' in response['user_friendly'].lower():
+            response_details = {
+                "user_friendly": response['user_friendly'],
+                "table_output_msg": 'NA',
+                "table_preview": 'NA',
+                "sql_code": 'NA',
+                "csv_file_path": 'NA'  # CSV file path for full data
+            }
+
             
         elif response['csv_download_link'].strip() == '':
             response_details = {
@@ -166,10 +187,14 @@ def main():
     tab1, tab2, tab3 = st.tabs(["DBChat", "User Guide", "Model Details"])
     with tab1:
         st.title("DBChat")
-        st.subheader("Query your database using natural language")
+        st.subheader("Query your database using a chat bot")
 
+        # Model selection
+        model_selection = st.sidebar.selectbox("Please select the Text2SQL model",['gpt4','defog/sqlcoder'])
+        st.sidebar.write("You selected", model_selection)
+
+        # schema information
         schema_info = requests.get(url = "http://dbchat_backend:8000/schema").json()
-
         databases = [database for database in sorted(list(schema_info['Databases'].keys()))]
         db = st.sidebar.selectbox("Please select the database",databases)
         st.sidebar.write('You selected:', db)
@@ -214,7 +239,7 @@ def main():
         # User input
         prompt = st.chat_input("Type your question here...")
         if prompt: 
-            handle_user_input(prompt)
+            handle_user_input(prompt, model_selection)
             # Rerun the app to ensure new messages are displayed immediately
             st.rerun() 
     with tab2: 

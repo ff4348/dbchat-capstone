@@ -8,7 +8,7 @@ IMAGE_ID=$(docker images -qf "reference=${RESOURCE_NM}")
 
 docker rm -f "$CONTAINER_ID"
 docker rmi -f "$IMAGE_ID"
-docker build -t ${RESOURCE_NM} -f Dockerfile.main .
+docker build -t ${RESOURCE_NM} -f Dockerfile.backend .
 docker run -d -p 8000:8000 --name ${RESOURCE_NM} --network ${NETWORK_NM} ${RESOURCE_NM}
 
 

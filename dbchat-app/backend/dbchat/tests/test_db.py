@@ -34,7 +34,7 @@ import os
 ## docker pull mysql/mysql-server:latest
 
 # Run docker container
-## docker run --name mysql-container -e MYSQL_ROOT_PASSWORD=your_password -d mysql/mysql-server:latest
+## docker run --name mysql-container --network dbchat_network -e MYSQL_ROOT_PASSWORD=root -d mysql-image:latest
 
 # Find IP address of container
 ## docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mysql-container
@@ -47,7 +47,7 @@ import os
 ## docker exec <container_id> /bin/sh -c 'mysql -u root -pyour_password </sakila-schema.sql'
 
 # Exec into docker container
-## docker exec -it mysql-container mysql -uroot -pyour_password
+## docker exec -it mysql-container mysql -uroot -root
 
 # Create R-O user
 ## CREATE USER 'newuser' IDENTIFIED BY 'newpassword';

@@ -8,6 +8,7 @@ __pycache__/
 
 # Secrets
 .env
+.k8s/
 
 # Distribution / packaging
 .Python
