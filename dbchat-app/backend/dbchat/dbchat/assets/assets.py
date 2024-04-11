@@ -48,7 +48,8 @@ def t2SQL_sqlcoder(runtime, user_question = 'how many customers do we have?', ta
 
     # Invoke the endpoint using the `invoke_endpoint` method of the SageMaker runtime client object
     try:
-        response = runtime.invoke_endpoint(EndpointName='huggingface-pytorch-tgi-inference-2024-04-09-13-03-07-404',
+        load_dotenv()
+        response = runtime.invoke_endpoint(EndpointName=os.getenv('SQLCODER_ENDPOINT'),
                                     ContentType='application/json',
                                     Body=json.dumps({"inputs": prompt,
                                                         "parameters": parameters})
