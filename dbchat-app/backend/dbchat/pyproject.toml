@@ -27,6 +27,11 @@ torch = [
   # {version = "^2.1.1+cu121", source = "pytorch", "platform" = "linux"}, # this is for training
 ]
 transformers = "^4.39.3"
+accelerate = "^0.29.2"
+trl = "^0.8.2"
+peft = "^0.10.0"
+bitsandbytes = "^0.43.1"
+datasets = "^2.18.0"
 
 
 [tool.poetry.group.dev.dependencies]
