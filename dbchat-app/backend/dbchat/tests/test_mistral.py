@@ -1,4 +1,6 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+import time
+import os
 
 # To get to memory and cpu information
 import psutil
@@ -11,21 +13,42 @@ print(f"{split_bar} CPU Usage {split_bar}")
 print(f"CPU percent: {psutil.cpu_percent()}%")
 
 # load model and tokenizer (may fail due to OOM errors depending on RAM available - Doesn't run with free GPU on colab)
-llm = AutoModelForCausalLM.from_pretrained(data_path, device_map='auto')
-tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-Instruct-v0.2')
+print('starting model download...')
+start_time = time.time()
 
-# create the pipeline - NO sampling (temp=0)
-llm_pipe = pipeline(
-    "text-generation",
-    model=llm,
-    tokenizer=tokenizer,
-    do_sample=False,
-    return_full_text=False,
-    max_new_tokens=2_048,
-    temperature=0
-)
+# Get the current working directory
+current_dir = os.getcwd()
+# Move two directories back
+data_path = os.path.join(current_dir, '..', '..')
+# Normalize the path to resolve any '..'
+data_path = os.path.normpath(data_path)
+print('data paht:',data_path)
 
-# generate the queries on first 3 examples
-gen_queries = [gq[0]['generated_text'].strip() for gq in llm_pipe(hfds_dbchat_test['test_prompt'][:3])]
-len(gen_queries)
-print(gen_queries)
+
+# print(start_time)
+# llm = AutoModelForCausalLM.from_pretrained(data_path, device_map='auto')
+# end_time = time.time()
+# print(f"Execution time: {end_time - start_time} seconds")
+# print('starting tokenizer download...')
+# tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-Instruct-v0.2')
+# print('finished tokenizer')
+
+# print('create pipeline')
+# # create the pipeline - NO sampling (temp=0)
+# llm_pipe = pipeline(
+#     "text-generation",
+#     model=llm,
+#     tokenizer=tokenizer,
+#     do_sample=False,
+#     return_full_text=False,
+#     max_new_tokens=2_048,
+#     temperature=0
+# )
+# print('pipeline created...')
+
+# # generate the queries on first 3 examples
+# gen_queries = [gq[0]['generated_text'].strip() for gq in llm_pipe(hfds_dbchat_test['test_prompt'][:3])]
+# len(gen_queries)
+# print(gen_queries)
+print('test')
+#gen_query = [gq[0]['generated_text'].strip() for gq in llm_pipe(hfds_dbchat_test['test_prompt'][:3])]
