@@ -32,6 +32,7 @@ trl = "^0.8.2"
 peft = "^0.10.0"
 bitsandbytes = "^0.43.1"
 datasets = "^2.18.0"
+google-cloud-storage = "^2.16.0"
 
 
 [tool.poetry.group.dev.dependencies]
