@@ -70,6 +70,8 @@ def handle_user_input(prompt, model_selection):
             response = json.loads(requests.post(url = "http://dbchat_backend:8000/query", data = json.dumps({"question":prompt})).text)
         elif model_selection == 'defog/sqlcoder':
             response = json.loads(requests.post(url = "http://dbchat_backend:8000/sqlcoder-query", data = json.dumps({"question":prompt})).text)
+        elif model_selection == 'mistral-finetuned':
+            response = json.loads(requests.post(url = "http://dbchat_backend:8000/mistral-query", data = json.dumps({"question":prompt})).text)
         else:
             response_details = {
                 "user_friendly": "Unable to query using current model selection...",
@@ -190,7 +192,7 @@ def main():
         st.subheader("Query your database using a chat bot")
 
         # Model selection
-        model_selection = st.sidebar.selectbox("Please select the Text2SQL model",['gpt4','defog/sqlcoder'])
+        model_selection = st.sidebar.selectbox("Please select the Text2SQL model",['gpt4','defog/sqlcoder', 'mistral-finetuned'])
         st.sidebar.write("You selected", model_selection)
 
         # schema information

@@ -7,6 +7,7 @@ from io import StringIO
 import pandas as pd
 import csv
 from sqlvalidator import parse
+from transformers import pipeline
 from dotenv import load_dotenv
 import json
 import os 
@@ -32,8 +33,6 @@ def format_basic_prompt(q, schema, prompt, db_type='mysql', test=False):
   if test:
     prompt_fmt = '[INST] \n' + prompt_fmt + ' [/INST]\n'
     return re.sub(r'\n\n\n+', '\n\n', prompt_fmt).strip()
-  if prompt_fmt[-1] != ';':
-    prompt_fmt += ';'
   prompt_fmt = '<s> [INST] \n' + prompt_fmt + ' </s>'
   # prompt_fmt = re.sub(r'\s+', ' ', prompt_fmt).strip()
   prompt_fmt = re.sub(r'\n\n\n+', '\n\n', prompt_fmt).strip()
@@ -62,6 +61,7 @@ def t2sql_mistralFT(llm_pipe, question, db_schema, db_type='mysql'):
     start_time = time.time()
     print(start_time)
     gen_queries = llm_pipe(prompt_str)
+    print('gen_queries:',gen_queries)
     final_query = gen_queries[0]['generated_text'].strip()
     end_time = time.time()
     print(f"Execution time: {end_time - start_time} seconds")

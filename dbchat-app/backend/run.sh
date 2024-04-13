@@ -45,20 +45,7 @@ docker run -d -p 8000:8000 --name ${RESOURCE_NM} --network ${NETWORK_NM} ${RESOU
 # curl -o /dev/null -s -w "%{http_code}\n" -X GET "http://localhost:8000/" # 404
 # curl -o /dev/null -s -w "%{http_code}\n" -X GET "http://localhost:8000/docs" # 200
 
-# curl -X 'POST' \
-#   'http://127.0.0.1:8000/predict/' \
-#   -H 'accept: application/json' \
-#   -H 'Content-Type: application/json' \
-#   -d '{
-#   "MedInc": 8.924,
-#   "HouseAge": 34,
-#   "AveRooms": 4,
-#   "AveBedrms": 2,
-#   "Population": 3241,
-#   "AveOccup": 22,
-#   "Latitude": 123.45,
-#   "Longitude": -145.67
-# }' # 200
+# curl -X 'POST' 'http://localhost:8000/query' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{"question": "how many customers do we have?"}'
 
 # # output logs for the container
 # docker logs ${APP_NAME}

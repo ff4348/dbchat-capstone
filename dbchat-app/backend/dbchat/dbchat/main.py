@@ -55,9 +55,9 @@ async def lifespan(app: FastAPI):
     end_time = time.time()
     print(f"Execution time: {end_time - start_time} seconds")
     print('starting tokenizer download...')
-    tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-Instruct-v0.2', padding_side='left')
+    global tknizer
+    tknizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-Instruct-v0.2', padding_side='left')
     print('finished tokenizer')
-
 
     print('create pipeline')
     # create the pipeline - NO sampling (temp=0)
@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
     llm_pipe = pipeline(
         "text-generation",
         model=llm_mistral,
-        tokenizer=tokenizer,
+        tokenizer=tknizer,
         do_sample=False,
         return_full_text=False,
         max_new_tokens=2048
