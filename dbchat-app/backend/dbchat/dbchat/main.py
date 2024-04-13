@@ -163,7 +163,7 @@ async def query_sqlcoder(user_question: UserQuestion):
 @app.post("/mistral-query", response_model=QueryResult)
 async def query_mistral(user_question: UserQuestion):
     print('question asked:',user_question)
-    sql_query = t2sql_mistralFT(llm_pipe, user_question, schema_info, db_type='mysql')
+    sql_query = t2sql_mistralFT(llm_pipe, user_question)
 
     try:
         db = SessionLocal()
