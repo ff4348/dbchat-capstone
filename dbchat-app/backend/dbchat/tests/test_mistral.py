@@ -23,7 +23,7 @@ data_path = os.path.join(current_dir, '..', '..')
 # Normalize the path to resolve any '..'
 data_path = os.path.normpath(data_path)
 data_path = data_path + '/mistral7b_ft_hypm5_10e_dbchat'
-print('data paht:',data_path)
+print('data path:',data_path)
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r'dbchatcapstone-key.json'
 
@@ -34,11 +34,11 @@ print("client instantiated")
 print('starting model download...')
 start_time = time.time()
 print(start_time)
-llm = AutoModelForCausalLM.from_pretrained(data_path, device_map='auto', offload_folder='/mnt/dbchat')
+llm = AutoModelForCausalLM.from_pretrained(data_path, device_map='auto', offload_folder='/model_offload')
 end_time = time.time()
 print(f"Execution time: {end_time - start_time} seconds")
 print('starting tokenizer download...')
-tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-Instruct-v0.2')
+tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-Instruct-v0.2', padding_side='left')
 print('finished tokenizer')
 
 print('create pipeline')
