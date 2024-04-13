@@ -11,7 +11,9 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from langchain_openai import ChatOpenAI
 from dbchat.assets.assets import t2SQL_gpt, t2SQL_sqlcoder, t2sql_mistralFT, execute_query, get_schema
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import boto3
+import time
 
 # Instantiate model using LangChain integration
 @asynccontextmanager
@@ -42,10 +44,7 @@ async def lifespan(app: FastAPI):
 
 
     # Instantiate our model
-    current_dir = os.getcwd()
-    data_path = os.path.join(current_dir, '..')
-    data_path = os.path.normpath(data_path)
-    data_path = data_path + '/mistral7b_ft_hypm5_10e_dbchat'
+    data_path = './mistral7b_ft_hypm5_10e_dbchat'
     print('data path:',data_path)
 
     print('starting model download...')

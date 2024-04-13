@@ -10,6 +10,8 @@ from sqlvalidator import parse
 from dotenv import load_dotenv
 import json
 import os 
+import re
+import time
 
 def remove_before_select(input_text):
     # Find the position of the first occurrence of "SELECT"
