@@ -208,7 +208,8 @@ def outputmodel(records_as_dicts, q, llm):
         return final_response
     else:
         print("df.size >= 100")
-        return "Regrettably, we are unable to generate a concise summary of the data due to its extensive volume. Please refer to the attached table in csv format for a comprehensive overview."
+        num_rows, num_columns = df.shape
+        return "We’re thrilled to present you with data that comprehensively addresses your question. However, summarizing its extensive volume, which includes {num_rows} rows and {num_columns} columns, concisely is quite a task. But worry not! We’ve attached a comprehensive CSV table for your perusal. Feel free to dive in and explore all the insights it has to offer!"
 
 
 
