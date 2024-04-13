@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from langchain_openai import ChatOpenAI
-from dbchat.assets.assets import t2SQL_gpt, t2SQL_sqlcoder, execute_query, get_schema
+from dbchat.assets.assets import t2SQL_gpt, t2SQL_sqlcoder, t2sql_mistralFT, execute_query, get_schema
 import boto3
 
 # Instantiate model using LangChain integration
@@ -39,6 +39,39 @@ async def lifespan(app: FastAPI):
     llm = ChatOpenAI(openai_api_key=openai_api_key, model="gpt-4", temperature=0)
     print('Model used:', llm.model_name,)
     print(os.path.dirname(os.path.realpath(__file__)))
+
+
+    # Instantiate our model
+    current_dir = os.getcwd()
+    data_path = os.path.join(current_dir, '..')
+    data_path = os.path.normpath(data_path)
+    data_path = data_path + '/mistral7b_ft_hypm5_10e_dbchat'
+    print('data path:',data_path)
+
+    print('starting model download...')
+    start_time = time.time()
+    print(start_time)
+    global llm_mistral
+    llm_mistral = AutoModelForCausalLM.from_pretrained(data_path, device_map='auto')
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time} seconds")
+    print('starting tokenizer download...')
+    tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-Instruct-v0.2', padding_side='left')
+    print('finished tokenizer')
+
+
+    print('create pipeline')
+    # create the pipeline - NO sampling (temp=0)
+    global llm_pipe
+    llm_pipe = pipeline(
+        "text-generation",
+        model=llm_mistral,
+        tokenizer=tokenizer,
+        do_sample=False,
+        return_full_text=False,
+        max_new_tokens=2048
+    )
+    print('pipeline created...')
 
     # Define your SQLAlchemy engine and session
     global engine
@@ -98,7 +131,7 @@ class QueryResults(BaseModel):
     results: List[QueryResult]
 
 @app.post("/query", response_model=QueryResult)
-async def query_database(user_question: UserQuestion):
+async def query_gpt(user_question: UserQuestion):
     print('question asked:',user_question)
     sql_query = t2SQL_gpt(user_question.question,llm,schema_info,db_name)
 
@@ -114,7 +147,7 @@ async def query_database(user_question: UserQuestion):
 
 
 @app.post("/sqlcoder-query", response_model=QueryResult)
-async def query_database(user_question: UserQuestion):
+async def query_sqlcoder(user_question: UserQuestion):
     print('question asked:',user_question)
     sql_query = t2SQL_sqlcoder(runtime,user_question,schema_info)
 
@@ -127,6 +160,22 @@ async def query_database(user_question: UserQuestion):
         return {'query':'No query generated...' + str(e), 'user_friendly':'**ERROR: Unable to connect to the database... ', 'csv_download_link':''}
     finally:
         db.close()
+
+@app.post("/mistral-query", response_model=QueryResult)
+async def query_mistral(user_question: UserQuestion):
+    print('question asked:',user_question)
+    sql_query = t2sql_mistralFT(llm_pipe, user_question, schema_info, db_type='mysql')
+
+    try:
+        db = SessionLocal()
+        print("SessionLocal called...")
+        return execute_query(db, sql_query, user_question.question, llm)
+    except Exception as e:
+        print("Unable to connect to the database...",str(e))
+        return {'query':'No query generated...' + str(e), 'user_friendly':'**ERROR: Unable to connect to the database... ', 'csv_download_link':''}
+    finally:
+        db.close()
+
 
 @app.get("/schema")
 async def query_database():
