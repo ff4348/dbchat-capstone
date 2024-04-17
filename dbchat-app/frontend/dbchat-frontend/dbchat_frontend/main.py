@@ -194,32 +194,61 @@ def main():
         # Model selection
         model_selection = st.sidebar.selectbox("Please select the Text2SQL model",['gpt4','defog/sqlcoder', 'mistral-finetuned'])
         st.sidebar.write("You selected", model_selection)
-
-        # schema information
-        schema_info = requests.get(url = "http://dbchat_backend:8000/schema").json()
-        databases = [database for database in sorted(list(schema_info['Databases'].keys()))]
-        db = st.sidebar.selectbox("Please select the database",databases)
-        st.sidebar.write('You selected:', db)
-
-        tables = [tbl for tbl in schema_info['Databases'][db]['Tables'].keys()]
-        table = st.sidebar.selectbox('Available tables',tables)
         
-        columns_info = schema_info['Databases'][db]['Tables'][table]
+        st.sidebar.markdown("---")
+        
+        database_or_csv = st.sidebar.radio("Select Data Source", ("Database", "CSV Upload"))
+        
+        if database_or_csv == "Database":
+        
+            # Clear the sidebar of any content related to CSV upload
+            st.sidebar.empty()
 
-        # Extracting column names and data types
-        column_names = []
-        data_types = []
-        for col_info in columns_info:
-            col_name, data_type = col_info.split('|')
-            column_names.append(col_name.strip())
-            data_types.append(data_type.strip())
+            # schema information
+            schema_info = requests.get(url = "http://dbchat_backend:8000/schema").json()
+            databases = [database for database in sorted(list(schema_info['Databases'].keys()))]
+            db = st.sidebar.selectbox("Please select the database",databases)
+            st.sidebar.write('You selected:', db)
 
-        # Creating a DataFrame to display in a table
-        data = {'Column Name': column_names, 'Data Type': data_types}
-        df = pd.DataFrame(data)
+            tables = [tbl for tbl in schema_info['Databases'][db]['Tables'].keys()]
+            table = st.sidebar.selectbox('Available tables',tables)
 
-        # Displaying the table in the sidebar
-        st.sidebar.table(df)
+            columns_info = schema_info['Databases'][db]['Tables'][table]
+
+            # Extracting column names and data types
+            column_names = []
+            data_types = []
+            for col_info in columns_info:
+                col_name, data_type = col_info.split('|')
+                column_names.append(col_name.strip())
+                data_types.append(data_type.strip())
+
+            # Creating a DataFrame to display in a table
+            data = {'Column Name': column_names, 'Data Type': data_types}
+            df = pd.DataFrame(data)
+
+            # Displaying the table in the sidebar
+            st.sidebar.table(df)
+        
+        elif database_or_csv == "CSV Upload":
+            # Display the CSV upload option in the sidebar
+            uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
+            if uploaded_file is not None:
+                df = pd.read_csv(uploaded_file)
+                st.write(f"Table name: {uploaded_file.name}")
+
+                # Extracting column names and data types from the uploaded CSV file
+                column_names = df.columns.tolist()
+                data_types = df.dtypes.tolist()
+
+                # Creating a DataFrame to display in a table
+                data = {'Column Name': column_names, 'Data Type': data_types}
+                df_info = pd.DataFrame(data)
+
+                # Displaying the column information in the sidebar
+                st.sidebar.table(df_info)
+
+        st.sidebar.markdown("---")
 
         st.button('Reset Chat', on_click=reset_conversation)
 
@@ -237,24 +266,25 @@ def main():
                     display_response_with_details(content)
                 if role == "assistant":
                     display_feedback_options(idx)
+        
 
         # User input
         prompt = st.chat_input("Type your question here...")
         if prompt: 
             handle_user_input(prompt, model_selection)
             # Rerun the app to ensure new messages are displayed immediately
-            st.rerun() 
+            st.rerun()
     with tab2: 
         st.header('About', divider='grey')
-        st.markdown('DBChat allows you to query databases using natural language without writing any SQL. Leveraging a state of the art SQLCoder language model with 15 billion parameters, DBChat converts your natural language into an efficient SQL query and returns the result in an easy to read format. Additionally, you can view the query itself and download the result as a CSV for further analysis.')
+        st.markdown('DBChat allows you to query databases using natural language without writing any SQL. Leveraging a state of the art GPT-4, SQLCoder, and Mistral 7B language models, DBChat converts your natural language into an efficient SQL query and returns the result in an easy to read format. Additionally, you can view the query itself and download the result as a CSV for further analysis.')
         st.header('Tips for writing effective prompts: ', divider='grey')
         st.markdown("- Avoid vague, incomplete, or open-ended statements (ex. Tell me about our users).")
         st.markdown("- Include filtering criteria (ex. date) to reduce the size of the result.")
         st.markdown("- Ensure your question can actually be answered by the available database by inspecting the available tables and columns.")
         #st.markdown("- Use the clear chat button to initialize a new line of questioning. This helps the model understand if you are asking a follow up question or not.")
     with tab3: 
-        st.header('About SQLCoder', divider='grey')
-        st.markdown("Defog's SQLCoder is a state-of-the-art LLM for converting natural language questions to SQL queries. SQLCoder is a 15B parameter model that slightly outperforms gpt-3.5-turbo for natural language to SQL generation tasks on our sql-eval framework, and significantly outperforms all popular open-source models. It also significantly outperforms text-davinci-003, a model that's more than 10 times its size. SQLCoder is fine-tuned on a base StarCoder model.")
+        st.header('About the models', divider='grey')
+        st.markdown("GPT-4 is a large language model with strong performance across SQL evaluation datasets. Our tests have shown a 17 percentage point difference in performance when compared to other top models such as Defog's SQLCoder and Mistral. Defog's SQLCoder is a state-of-the-art LLM for converting natural language questions to SQL queries. SQLCoder is a 15B parameter model that slightly outperforms gpt-3.5-turbo for natural language to SQL generation tasks on our sql-eval framework, and significantly outperforms all popular open-source models. It also significantly outperforms text-davinci-003, a model that's more than 10 times its size. SQLCoder is fine-tuned on a base StarCoder model. Lastly, we also provide a finetuned version of the Mistral 7B model, which has roughly 100x fewer parameters compared to GPT-4. For certain queries, this can be a more cost-effective choice.") 
 
 if __name__ == "__main__":
     main()

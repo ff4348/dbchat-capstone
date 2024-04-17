@@ -209,8 +209,8 @@ def outputmodel(records_as_dicts, q, llm):
     else:
         print("df.size >= 100")
         num_rows, num_columns = df.shape
-        return "We’re thrilled to present you with data that comprehensively addresses your question. However, summarizing its extensive volume, which includes {num_rows} rows and {num_columns} columns, concisely is quite a task. But worry not! We’ve attached a comprehensive CSV table for your perusal. Feel free to dive in and explore all the insights it has to offer!"
-
+        return_str = "The data of size " + str(num_rows) + " rows and " + str(num_columns) + " columns is too large to summarize. We’ve attached a comprehensive CSV table for your perusal. Feel free to dive in!"
+        return return_str
 
 
 # Function to execute SQL query for a single user question
